@@ -107,7 +107,34 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
     #gradient for the whole batch
 
     for i in xrange(0,num_iter):
-        pass
+        # forward propagation
+        z1 = X.dot(W1) + b1
+        a1 = np.tanh(z1)
+        z2 = a1.dot(W2) + b2
+        exp_scores = np.exp(z2)
+        probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
 
+        # backpropagation step
+        delta3  = probs
+        delta3[range(num_examples),y] -= 1
+
+        dW2 = (a1.T).dot(delta3)
+        db2 = np.sum(delta3,axis=0,keepdims=True)
+
+        delta2 = delta3.dot(W2.T) * (1 - np.power(a1,2))
+
+        dW1 = np.dot(X.T,delta2)
+        db1  =np.sum(delta2,axis=0)
+
+        #add regulatization terms to W1,W2
+        dW2 += reg_lambda * W2;
+        dW1 += reg_lambda * W1;
+
+        #update the parameters
+
+        W1 += -epsilon * dW1
+        b1 += -epsilon * b1
+        W2 += -epsilon * dW2
+        b2 += -epsilon * b2
 
     pass
