@@ -63,7 +63,7 @@ def calculate_loss(model):
     probs = exp_scores / np.sum(exp_scores,axis=1,keepdims=True)
 
     #calculate the final loss
-    final_log_probs = -np.log()
+    final_log_probs = -np.log(probs[range(num_examples),y])
 
     data_loss = np.sum(final_log_probs)
 
@@ -74,5 +74,40 @@ def calculate_loss(model):
     return 1.0 / num_examples * data_loss
 
 
+#the helper function to predict the class label: (0 or 1 here)
 def predict(model,x):
+    W1, b1, W2, b2 = model['W1'], model['b1'], model['W2'], model['b2']
+
+    # forward propagation
+
+    z1 = X.dot(W1) + b1
+    a1 = np.tanh(z1)
+    z2 = a1.dot(W2) + b2
+
+    exp_scores = np.exp(z2)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+
+    return np.argmax(probs,axis=1)
+
+
+# this function learns the parameters for the 3-layer neural networks and return the model
+def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
+
+    # initialize the parameters randomly
+    np.random.seed(0)
+    W1 = np.random.randn(nn_input_dim,nn_hidendim) / np.sqrt(nn_input_dim)
+    b1 = np.zeros((1,nn_hidendim))
+    W2 = np.random.randn(nn_hidendim, nn_output_dim) / np.sqrt(nn_hidendim)
+    b2 = np.zeros((1,nn_output_dim))
+
+    # the model we will return
+
+    model = {}
+
+    #gradient for the whole batch
+
+    for i in xrange(0,num_iter):
+        pass
+
+
     pass
