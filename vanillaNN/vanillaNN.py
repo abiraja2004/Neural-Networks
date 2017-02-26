@@ -31,7 +31,7 @@ epsilon = 0.01 #learning rate
 reg_lambda = 0.01 #regularization parameter
 
 # helper function to plot a decision boundary X: your dataset ; pred_func: your classifier
-def plot_decision_boundary(X,y,pred_func):
+def plot_decision_boundary(pred_func):
 
     # the range of padding
     x_min,x_max = X[:,0].min() - 0.5 , X[:,0].max() + 0.5
@@ -44,6 +44,7 @@ def plot_decision_boundary(X,y,pred_func):
     xx,yy = np.meshgrid(np.arange(x_min,x_max,h),np.arange(y_min,y_max,h))
 
     Z = pred_func(np.c_[xx.ravel(),yy.ravel()])
+
     Z = Z.reshape(xx.shape)
 
     plt.contourf(xx,yy,Z,cmap=plt.cm.Spectral)
@@ -80,7 +81,7 @@ def predict(model,x):
 
     # forward propagation
 
-    z1 = X.dot(W1) + b1
+    z1 = x.dot(W1) + b1
     a1 = np.tanh(z1)
     z2 = a1.dot(W2) + b2
 
@@ -132,10 +133,10 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
 
         #update the parameters
 
-        W1 += -epsilon * (dW1 / float(num_examples))
-        b1 += -epsilon * (b1 / float(num_examples))
-        W2 += -epsilon * (dW2 / float(num_examples))
-        b2 += -epsilon * (b2 / float(num_examples))
+        W1 += -epsilon * dW1
+        b1 += -epsilon * db1
+        W2 += -epsilon * dW2
+        b2 += -epsilon * db2
 
         #assign the parameters to the latest madel
 
@@ -147,9 +148,20 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
     return model
 
 #build a model with 3-dim hidden layer
+#
+# model = build_model(3,num_iter=20000,print_loss=True)
+#
+# plot_decision_boundary(lambda x:predict(model,x))
+#
+# plt.show()
 
-model = build_model(3,print_loss=True)
+plt.figure(figsize=(16,32))
+hidden_layer_dimensions = [1,2,3,4,5,20,50]
 
-plot_decision_boundary(X,y,lambda x:predict(model,x))
+for i,nn_num in enumerate(hidden_layer_dimensions):
+    plt.subplot(4,2,i+1)
+    plt.title("Hidden Layer Size %i" % nn_num)
+    model = build_model(nn_num,num_iter=20000,print_loss=False)
+    plot_decision_boundary(lambda x:predict(model,x))
 
 plt.show()
