@@ -132,9 +132,16 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
 
         #update the parameters
 
-        W1 += -epsilon * dW1
-        b1 += -epsilon * b1
-        W2 += -epsilon * dW2
-        b2 += -epsilon * b2
+        W1 += -epsilon * (dW1 / float(num_examples))
+        b1 += -epsilon * (b1 / float(num_examples))
+        W2 += -epsilon * (dW2 / float(num_examples))
+        b2 += -epsilon * (b2 / float(num_examples))
 
-    pass
+        #assign the parameters to the latest madel
+
+        model = {"W1":W1,"b1":b1,"W2":W2,"b2":b2}
+
+        if print_loss and (i % 1000 == 0):
+            print "the latest loss after the iteration %i:%f" % (i,calculate_loss(model))
+
+    return model
