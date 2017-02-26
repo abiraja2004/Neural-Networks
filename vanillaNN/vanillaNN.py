@@ -145,3 +145,11 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
             print "the latest loss after the iteration %i:%f" % (i,calculate_loss(model))
 
     return model
+
+#build a model with 3-dim hidden layer
+
+model = build_model(3,print_loss=True)
+
+plot_decision_boundary(X,y,lambda x:predict(model,x))
+
+plt.show()
