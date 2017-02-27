@@ -159,9 +159,9 @@ plt.figure(figsize=(16,32))
 hidden_layer_dimensions = [1,2,3,4,5,20,50]
 
 for i,nn_num in enumerate(hidden_layer_dimensions):
-    plt.subplot(4,2,i+1)
+    plt.subplot(5,2,i+1)
     plt.title("Hidden Layer Size %i" % nn_num)
-    model = build_model(nn_num,num_iter=20000,print_loss=False)
+    model = build_model(nn_num,num_iter=20000,print_loss=True)
     plot_decision_boundary(lambda x:predict(model,x))
 
 plt.show()
