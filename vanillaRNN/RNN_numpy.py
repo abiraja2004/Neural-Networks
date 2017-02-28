@@ -7,6 +7,8 @@
 """
 import numpy as np
 import operator
+from datetime import datetime
+import sys
 
 class RNN_numpy:
     def __init__(self,word_dim,hidden_dim=100,bptt_truncate=4):
@@ -131,7 +133,7 @@ class RNN_numpy:
                 gradplus = self.calculate_total_loss([x],[y])
                 parameter[ix] = original_value - h
                 gradminus = self.calculate_total_loss([x],[y])
-                estimated_gradient = (gradplus - gradminus) / 2 * h
+                estimated_gradient = (gradplus - gradminus) / (2 * h)
 
                 backprop_grad = bptt_gradients[pidx][ix]
 
@@ -154,9 +156,42 @@ class RNN_numpy:
             print 'Gradient check for parameters %s passed' % pname
 
 
+    def numpy_sgd_step(self,x,y,learning_rate):
+
+        # calculate the gradients
+        dLdU,dLdV,dLdW = self.bptt(x,y)
+
+        # update the parameters
+        self.U -= learning_rate * dLdU
+        self.V -=learning_rate * dLdV
+        self.W -= learning_rate * dLdW
+
+    def train_with_SGD(self,X_train,y_train,learning_rate=0.005,nepoch=100,interval=5):
+
+        # save loss to draw learning curve
+        Losses = []
+        num_example_seen = 0
+        for epoch in range(nepoch):
+
+            # save the loss for visualizing
+            if epoch % interval == 0:
+                loss = self.calculate_loss(X_train,y_train)
+                Losses.append((num_example_seen,loss))
+                time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print '%s : Loss after %d examples,%d epoch is %f' %(time,num_example_seen,epoch,loss)
+
+                # adjust the learning rate if loss is increasing
+                if len(Losses) > 1 and Losses[-1][1] > Losses[-2][1]:
+                   learning_rate *= 0.5
+                   print 'Resetting learning rate to %f' % learning_rate
+                sys.stdout.flush()
 
 
-
+            # for each training example...
+            for i in range(len(y_train)):
+                # one SGD step
+                self.numpy_sgd_step(X_train[i],y_train[i],learning_rate)
+                num_example_seen += 1
 
 
     # helper function to calculate softmax function

@@ -16,6 +16,8 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 vocabulary_size = 8000
+# vocabulary_size = 100 # for gradient check
+
 UNKNOWN_TOKEN = 'UNKNOWN_TOKEN'
 SENTENCE_START = 'SENTENCE_START'
 SENTENCE_END = 'SENTENCE_END'
@@ -80,7 +82,7 @@ print 'y:\n%s\n%s' % (" ".join([index_to_word[y] for y in y_example]),y_example)
 # check forward propagation and predict function
 
 np.random.seed(10)
-model =  RNN_numpy(vocabulary_size)
+model =  RNN_numpy(vocabulary_size,hidden_dim=10,bptt_truncate=1000)
 y,s = model.forward_propagation(X_train[10])
 print y.shape
 print np.matrix(s[0]).shape
@@ -96,8 +98,9 @@ print "Expected Loss for random predictions: %f\n" % np.log(vocabulary_size)
 print "Actual Loss : %f\n" % model.calculate_loss(X_train[:1000],y_train[:1000])
 
 
+# gradient check note: to run gradient check,we'd better uncomment the code which set vocabulary to 100.
 
-
+#model.gradient_check([0,1,2,3],[1,2,3,4])
 
 
 
