@@ -193,7 +193,6 @@ class RNN_numpy:
                 self.numpy_sgd_step(X_train[i],y_train[i],learning_rate)
                 num_example_seen += 1
 
-
     # helper function to calculate softmax function
     def softmax(self,x):
         xt = np.exp(x)
