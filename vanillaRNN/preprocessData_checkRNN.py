@@ -1,7 +1,7 @@
 #coding=utf8
 """
 @author: Lebron.Ran
-@file: vanillaRNN.py
+@file: preprocessData_checkRNN.py
 @time: 2017/2/27 0027-23:51
 """
 import csv
@@ -73,6 +73,8 @@ print 'x:\n%s\n%s' % (" ".join([index_to_word[x] for x in x_example]),x_example)
 print 'y:\n%s\n%s' % (" ".join([index_to_word[y] for y in y_example]),y_example)
 
 
+
+# build a vanilla RNN model
 
 
 
