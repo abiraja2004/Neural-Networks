@@ -9,12 +9,11 @@ import itertools
 import operator
 import numpy as np
 import nltk
+from RNN_numpy import RNN_numpy
 import sys
 from datetime import datetime
 
-from utils import *
 import matplotlib.pyplot as plt
-
 
 vocabulary_size = 8000
 UNKNOWN_TOKEN = 'UNKNOWN_TOKEN'
@@ -75,7 +74,26 @@ print 'y:\n%s\n%s' % (" ".join([index_to_word[y] for y in y_example]),y_example)
 
 
 # build a vanilla RNN model
+# some scripts to check every part of RNN when implementing it.
 
+
+# check forward propagation and predict function
+
+np.random.seed(10)
+model =  RNN_numpy(vocabulary_size)
+y,s = model.forward_propagation(X_train[10])
+print y.shape
+print np.matrix(s[0]).shape
+print y
+
+predictions = model.predict(X_train[10])
+print predictions.shape
+print predictions
+
+# check our loss function with only 1000 samples to save time.
+
+print "Expected Loss for random predictions: %f\n" % np.log(vocabulary_size)
+print "Actual Loss : %f\n" % model.calculate_loss(X_train[:1000],y_train[:1000])
 
 
 
