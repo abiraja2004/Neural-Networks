@@ -11,6 +11,7 @@ import sklearn
 import sklearn.datasets
 import sklearn.linear_model
 import matplotlib
+import datetime
 import matplotlib.pyplot as plt
 
 ###   this is a simple implmention of the most vanilla Neural Network with only 1 hidden-layers
@@ -18,7 +19,7 @@ import matplotlib.pyplot as plt
 #generate a dataset and visualize it
 
 np.random.seed(0)
-X,y = sklearn.datasets.make_moons(200,noise=0.20)
+X,y = sklearn.datasets.make_moons(5000,noise=0.20)
 
 # plt.scatter(X[:,0],X[:,1],c=y,s=40,cmap=plt.cm.Spectral)
 # plt.show()
@@ -27,7 +28,7 @@ num_examples = len(X)
 nn_input_dim = 2
 nn_output_dim = 2
 
-epsilon = 0.01 #learning rate
+epsilon = 0.0011 #learning rate
 reg_lambda = 0.01 #regularization parameter
 
 # helper function to plot a decision boundary X: your dataset ; pred_func: your classifier
@@ -48,7 +49,7 @@ def plot_decision_boundary(pred_func):
     Z = Z.reshape(xx.shape)
 
     plt.contourf(xx,yy,Z,cmap=plt.cm.Spectral)
-    plt.scatter(X[:,0],X[:,1],c=y,cmap=plt.cm.Spectral)
+    plt.scatter(X[:100,0],X[:100,1],c=y[:100],cmap=plt.cm.Spectral)
 
 #helper function to evaluate the total loss on the dataset
 def calculate_loss(model):
@@ -148,20 +149,29 @@ def build_model(nn_hidendim,num_iter = 5000,print_loss=True):
     return model
 
 #build a model with 3-dim hidden layer
+
+begin = datetime.datetime.now()
+
+model = build_model(3,num_iter=20000,print_loss=True)
+
+end = datetime.datetime.now()
+
+print end - begin
+
 #
-# model = build_model(3,num_iter=20000,print_loss=True)
+plot_decision_boundary(lambda x:predict(model,x))
 #
-# plot_decision_boundary(lambda x:predict(model,x))
+plt.show()
+
+
+
+# plt.figure(figsize=(16,32))
+# hidden_layer_dimensions = [1,2,3,4,5,20,50]
+#
+# for i,nn_num in enumerate(hidden_layer_dimensions):
+#     plt.subplot(5,2,i+1)
+#     plt.title("Hidden Layer Size %i" % nn_num)
+#     model = build_model(nn_num,num_iter=20000,print_loss=True)
+#     plot_decision_boundary(lambda x:predict(model,x))
 #
 # plt.show()
-
-plt.figure(figsize=(16,32))
-hidden_layer_dimensions = [1,2,3,4,5,20,50]
-
-for i,nn_num in enumerate(hidden_layer_dimensions):
-    plt.subplot(5,2,i+1)
-    plt.title("Hidden Layer Size %i" % nn_num)
-    model = build_model(nn_num,num_iter=20000,print_loss=True)
-    plot_decision_boundary(lambda x:predict(model,x))
-
-plt.show()
