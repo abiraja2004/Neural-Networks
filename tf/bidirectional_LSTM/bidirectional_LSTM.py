@@ -20,13 +20,13 @@ from tensorflow.contrib import rnn
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-input_data = input_data.read_data_sets('MNIST_data/',one_hot=True)
+mnist = input_data.read_data_sets('MNIST_data/',one_hot=True)
 
 # initial hyper*** parameters
 
-learning_rate = 0.0001
-train_iters = 10000
-batch_size = 64
+learning_rate = 0.001
+train_iters = 1000
+batch_size = 128
 display_interval = 10
 
 # neural neywork' parameters
@@ -39,17 +39,17 @@ nn_classes = 10
 # helper function
 
 def weight_variables(shape):
-    initial = tf.truncated_normal(shape,stddev=0.1)
+    initial = tf.random_normal(shape)
     return tf.Variable(initial)
 
 def bias_variables(shape):
-    initial = tf.constant(0.1,tf.float32,shape)
+    initial = tf.random_normal(shape)
     return tf.Variable(initial)
 
 # tf Graph
 
 with tf.name_scope("input"):
-    x = tf.placeholder(tf.float32,shape=[None,nn_time_step,nn_input],name="x")
+    x = tf.placeholder(tf.float32,shape=[None,nn_time_step,nn_input],name="x-input")
     y = tf.placeholder(tf.float32,shape=[None,nn_classes],name="y-input")
 
 with tf.name_scope("variables"):
@@ -82,8 +82,7 @@ with tf.name_scope("cost"):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat,
                                                                   labels=y))
     
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
-
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
     
 with tf.name_scope("evaluation"):
@@ -97,14 +96,16 @@ with tf.Session() as sess:
     sess.run(initializers)
     step = 0
     while step < train_iters:
-        batch_x,batch_y = input_data.train.next_batch(batch_size)
+        batch_x,batch_y = mnist.train.next_batch(batch_size)
         
         batch_x = batch_x.reshape((batch_size,nn_time_step,nn_input))
         
         loss,acc,_ = sess.run([cost,accuracy,optimizer],feed_dict={x:batch_x,y:batch_y})
         
         if step % display_interval == 0:
-            
+#==============================================================================
+#             loss,acc = sess.run([cost,accuracy],feed_dict={x:batch_x,y:batch_y})
+#==============================================================================
             print('Iter: %d,Mini-Batch Loss: %.3f,Accuracy: %.3f' % (step,loss,acc))
         
         step += 1
@@ -114,8 +115,8 @@ with tf.Session() as sess:
             
     test_len = 200
     
-    test_x = input_data.test.images[:test_len].reshape((-1,nn_time_step,nn_input))
-    test_y = input_data.test.labels[:test_len]
+    test_x = mnist.test.images[:test_len].reshape((-1,nn_time_step,nn_input))
+    test_y = mnist.test.labels[:test_len]
     
     
     print("Accuracy on Test Set: %.3f" % (sess.run(accuracy,feed_dict={x:test_x,
