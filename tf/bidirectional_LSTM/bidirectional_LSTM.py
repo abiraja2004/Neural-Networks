@@ -65,12 +65,18 @@ def BiRNN(x,weights,bias):
     x = tf.split(x,nn_time_step,0)
     
     # define lstm cell with tensorflow
-    # forward lstm cell
-    lstm_fw_cell = rnn.BasicLSTMCell(nn_hidden_size,forget_bias=1.0)
-    # backward lstm cell
-    lstm_bw_cell = rnn.BasicLSTMCell(nn_hidden_size,forget_bias=1.0)
     
-    outputs,_fw,_bw = rnn.static_bidirectional_rnn(lstm_fw_cell,lstm_bw_cell,x,
+    gru_fw_cell = rnn.GRUCell(nn_hidden_size)
+    gru_bw_cell = rnn.GRUCell(nn_hidden_size)
+    
+#==============================================================================
+#     # forward lstm cell
+#     lstm_fw_cell = rnn.BasicLSTMCell(nn_hidden_size,forget_bias=1.0)
+#     # backward lstm cell
+#     lstm_bw_cell = rnn.BasicLSTMCell(nn_hidden_size,forget_bias=1.0)
+#==============================================================================
+    
+    outputs,_fw,_bw = rnn.static_bidirectional_rnn(gru_fw_cell,gru_bw_cell,x,
                                            dtype=tf.float32)
     
     return tf.matmul(outputs[-1],weights) + bias
