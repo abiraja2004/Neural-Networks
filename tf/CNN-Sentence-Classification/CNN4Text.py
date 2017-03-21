@@ -23,7 +23,7 @@ class CNN4Text(object):
         # placeholders for input,output and dropout
         
         with tf.name_scope(name="input"):
-            self._input_x = tf.placeholder(tf.float32,[None,sequence_length],name='x')
+            self._input_x = tf.placeholder(tf.int32,[None,sequence_length],name='x')
             self._input_y = tf.placeholder(tf.float32,[None,num_classes],name = 'y')
             self._keep_prob = tf.placeholder(tf.float32,name = 'keep_prop')
         
@@ -98,7 +98,7 @@ class CNN4Text(object):
             l2_loss += tf.nn.l2_loss(W)
             # l2_loss += tf.nn.l2_loss(b) # really?
             
-            self._scores = tf.nn.xw_plus_b(h_pool_flatened,W,b,name="scores")
+            self._scores = tf.nn.xw_plus_b(self.h_pool_flatened,W,b,name="scores")
             self._predictions = tf.argmax(self._scores,axis=1,name="predictions")                           
         
         # calculate cross-entropy
