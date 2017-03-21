@@ -22,10 +22,10 @@ class CNN4Text(object):
                  ,filter_sizes,num_filters,l2_reg_lambda=0.0):
         # placeholders for input,output and dropout
         
-        with tf.name_scope(name="input")
-        self._input_x = tf.placeholder(tf.float32,[None,sequence_length],name='x')
-        self._input_y = tf.placeholder(tf.float32,[None,num_classes],name = 'y')
-        self._keep_prob = tf.placeholder(tf.float32,name = 'keep_prop')
+        with tf.name_scope(name="input"):
+            self._input_x = tf.placeholder(tf.float32,[None,sequence_length],name='x')
+            self._input_y = tf.placeholder(tf.float32,[None,num_classes],name = 'y')
+            self._keep_prob = tf.placeholder(tf.float32,name = 'keep_prop')
         
         # l2 regularization if needed
         

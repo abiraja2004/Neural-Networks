@@ -53,7 +53,7 @@ def load_data_and_labels(positive_data_path,negative_data_path):
     positive_labels = [[0,1] for pos in positive_examples]
     negative_labels = [[1,0] for neg in negative_examples]
     
-    y = np.concatenate(positive_labels,negative_labels,0)
+    y = np.concatenate([positive_labels,negative_labels],0)
     
     return [x,y]
     
