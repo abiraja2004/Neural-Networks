@@ -10,7 +10,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 import word2vec
-
+import 
 
 #==============================================================================
 # # word segmented? I guess.
@@ -21,8 +21,13 @@ import word2vec
 # 
 #==============================================================================
 
-model = word2vec.load("/home/chosenone/download/GoogleNews-vectors-negative300.bin")
-print(model.vocab.shape)
-print(model.vectors.shape)
+# memory error
+
+#==============================================================================
+# model = word2vec.load("/home/chosenone/download/.bin")
+# print(model.vocab.shape)
+# print(model.vectors.shape)
+# 
+#==============================================================================
 
 
