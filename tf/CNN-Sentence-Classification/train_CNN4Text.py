@@ -133,7 +133,7 @@ with tf.Graph().as_default():
     session_config = tf.ConfigProto(allow_soft_placement=FLAGS.allow_soft_parameters,
                                     log_device_placement=FLAGS.log_device_placement)
     
-    sess  = tf.Session(config=session_config)
+    sess = tf.Session(config=session_config)
     with sess.as_default():
         
         cnn = CNN4Text(sequence_length=x_train.shape[1],

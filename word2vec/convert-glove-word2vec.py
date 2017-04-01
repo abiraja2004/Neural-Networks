@@ -14,6 +14,7 @@ import smart_open
 from sys import platform
 
 import gensim
+import time
 
 
 def prepend_line(infile, outfile, line):
@@ -52,16 +53,24 @@ num_lines, dims = get_lines(glove_file)
 
 # Output: Gensim Model text format.
 gensim_file='/home/chosenone/download/glove.6B/glove_model.200d.2.txt'
-gensim_first_line = "{} {}".format(num_lines, dims)
-
+#==============================================================================
+# gensim_first_line = "{} {}".format(num_lines, dims)
+#==============================================================================
+                                                
 # Prepends the line.
-if platform == "linux" or platform == "linux2":
-	prepend_line(glove_file, gensim_file, gensim_first_line)
-else:
-	prepend_slow(glove_file, gensim_file, gensim_first_line)
+#==============================================================================
+# if platform == "linux" or platform == "linux2":
+# 	prepend_line(glove_file, gensim_file, gensim_first_line)
+# else:
+# 	prepend_slow(glove_file, gensim_file, gensim_first_line)
+#==============================================================================
 
 # Demo: Loads the newly created glove_model.txt into gensim API.
+start = time.time()
 model=gensim.models.KeyedVectors.load_word2vec_format(gensim_file,binary=False) #GloVe Model
+end = time.time()
 
-print model.most_similar(positive=['australia'], topn=10)
-print model.similarity('woman', 'man')
+print("load pre-trained model cost  %.4f s" % (end - start))
+
+print(model.most_similar(positive=['australia'], topn=10))
+print(model.similarity('woman', 'man'))

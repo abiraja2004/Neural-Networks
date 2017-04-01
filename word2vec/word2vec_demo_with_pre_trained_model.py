@@ -23,11 +23,9 @@ import
 
 # memory error
 
-#==============================================================================
-# model = word2vec.load("/home/chosenone/download/.bin")
-# print(model.vocab.shape)
-# print(model.vectors.shape)
-# 
-#==============================================================================
+model = word2vec.load("/home/chosenone/download/.bin")
+print(model.vocab.shape)
+print(model.vectors.shape)
+
 
 
