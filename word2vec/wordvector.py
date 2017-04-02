@@ -8,7 +8,7 @@ Created on Wed Mar 15 23:33:40 2017
 import jieba
 import word2vec
 
-filePath = "/home/chosenone/download/corpus_content.txt"
+filePath = "/home/chosenone/download/corpus/ducdata.txt"
 
 fileSegmented = './corpus_content_segmented.txt'
 
