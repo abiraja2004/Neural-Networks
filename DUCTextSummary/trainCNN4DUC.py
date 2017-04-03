@@ -16,6 +16,7 @@ import os
 import time
 import datetime
 import data_helper
+import re
 
 from CNN4DUCSummary import CNN4DUCSummary
 from tensorflow.contrib import learn
@@ -32,12 +33,6 @@ from tensorflow.contrib import learn
 tf.flags.DEFINE_float("validation_set_percentage",0.1,
         "the percentage of training examples that will be used for validation set")
 
-tf.flags.DEFINE_string("data_postive_path","./data/rt-polaritydata/rt-polarity.pos",
-                       "file path for postive data")
-
-tf.flags.DEFINE_string("data_negative_path","./data/rt-polaritydata/rt-polarity.neg",
-                       "file path for negative data")
-
 #==============================================================================
 # model hyperparameters
 #==============================================================================
@@ -46,7 +41,7 @@ tf.flags.DEFINE_float("learning_rate",0.001,"learning rate(default 0.001)")
 
 tf.flags.DEFINE_integer("embedding_size",200,"the size of word embeeding (default 200)")
 
-tf.flags.DEFINE_integer("num_filters",128,"the number of filters for each filter size(default 128)")
+tf.flags.DEFINE_integer("num_filters",100,"the number of filters for each filter size(default 128)")
 
 tf.flags.DEFINE_string("filter_sizes","3,4,5","comma-separated filter sizes(default 3,4,5)")
 
@@ -101,14 +96,15 @@ x_data,y,_,_ = data_helper.LoadSentencesAndFScores()
 
 # construct vocabulary
 
-max_sentence_length = max([len(sent.split(" ")) for sent in x_data])
+max_sentence_length = min([len(re.split(r"\s+",sent.strip())) for sent in x_data])
 
 print(max_sentence_length)
 
-vocab_processor = learn.preprocessing.VocabularyProcessor(max_sentence_length)
+vocab_processor = learn.preprocessing.VocabularyProcessor(150)
 x = np.array(list(vocab_processor.fit_transform(x_data)))
-
+y = np.reshape(np.array(y),[-1,1])
 print(len(vocab_processor.vocabulary_))
+print(len(y))
 
 # shuffle data
 np.random.seed(10)
@@ -126,7 +122,6 @@ y_train,y_val = y_shuffled[:validation_set_index],y_shuffled[validation_set_inde
 print("Vocabulary Size: %s" % len(vocab_processor.vocabulary_._mapping))
 print("Length of train/validation set: %d , %d ." % (len(y_train),len(y_val)))
 
-exit
 
 #==============================================================================
 # Training
@@ -139,7 +134,7 @@ with tf.Graph().as_default():
     sess = tf.Session(config=session_config)
     with sess.as_default():
         
-        cnn = CNN4Text(sequence_length=x_train.shape[1],
+        cnn = CNN4DUCSummary(sequence_length=x_train.shape[1],
                        num_classes=y_train.shape[1],
                        vocab_size=len(vocab_processor.vocabulary_),
                        embedding_size=FLAGS.embedding_size,
@@ -173,15 +168,14 @@ with tf.Graph().as_default():
         # summary for loss and accuracy
         
         loss_summary = tf.summary.scalar("loss",cnn._loss)
-        acc_summary = tf.summary.scalar("accuracy",cnn._accuracy)
         
         # train summaries
-        train_summary_op = tf.summary.merge([loss_summary,acc_summary,grad_summayies_merged])
+        train_summary_op = tf.summary.merge([loss_summary,grad_summayies_merged])
         train_summary_path = os.path.join(output_path,"summary","train")
         train_summary_writer = tf.summary.FileWriter(train_summary_path,sess.graph)
         
         #validation summaries
-        validation_summary_op = tf.summary.merge([loss_summary,acc_summary])
+        validation_summary_op = tf.summary.merge([loss_summary])
         validation_summary_path = os.path.join(output_path,"summary","validation")
         validation_summary_writer = tf.summary.FileWriter(validation_summary_path,sess.graph)
         
@@ -207,11 +201,11 @@ with tf.Graph().as_default():
             feed_dict = {cnn._input_x:x_batch,
                          cnn._input_y:y_batch,
                          cnn._keep_prob:FLAGS.keep_prob}
-            _,step,summaries,loss,accuracy = sess.run([train_op,global_step,train_summary_op
-                      ,cnn._loss,cnn._accuracy],feed_dict)
+            _,step,summaries,loss = sess.run([train_op,global_step,train_summary_op
+                      ,cnn._loss],feed_dict)
             time_str = datetime.datetime.now().isoformat()
             
-            print("%s: Step: %d,Loss: %.4f,Accuracy: %.4f" % (time_str,step,loss,accuracy))
+            print("%s: Step: %d,Loss: %.4f" % (time_str,step,loss))
             
             if writer:
                 writer.add_summary(summaries,step)
@@ -225,18 +219,18 @@ with tf.Graph().as_default():
             feed_dict = {cnn._input_x:x_batch,
                          cnn._input_y:y_batch,
                          cnn._keep_prob:1.0} # for evaluation
-            step,summaries,loss,accuracy = sess.run([global_step,validation_summary_op
-                      ,cnn._loss,cnn._accuracy],feed_dict)
+            step,summaries,loss = sess.run([global_step,validation_summary_op
+                      ,cnn._loss],feed_dict)
             time_str = datetime.datetime.now().isoformat()
             
-            print("%s: Step: %d,Loss: %.4f,Accuracy: %.4f" % (time_str,step,loss,accuracy))
+            print("%s: Step: %d,Loss: %.4f" % (time_str,step,loss))
             
             if writer:
                 writer.add_summary(summaries,step)
         
         # generates batches
         
-        batches = data_util.batch_iter(list(zip(x_train,y_train)),FLAGS.batch_size,FLAGS.num_epochs)
+        batches = data_helper.batch_iter(list(zip(x_train,y_train)),FLAGS.batch_size,FLAGS.num_epochs)
         
         #Training Loop
         
