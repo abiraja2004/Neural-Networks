@@ -12,7 +12,9 @@ import word2vec
 filePath = "/home/chosenone/download/corpus/ducdata.txt"
       
 
-# train word vector        
+# train word vector
+
+word2vec.word2vec(filePath,'duc_corpus_word_vector.bin',min_count=0,size=200,verbose=True)        
 
 
 #==============================================================================

@@ -14,6 +14,7 @@ import re
 import os
 import csv
 import collections
+import numpy as np
 
 corpus_path = "/home/chosenone/download/DUC_COPRUS/duc%s.txt"
 summary_path = "/home/chosenone/download/rouge2.0-0.2/duc%s/reference/"
@@ -25,6 +26,7 @@ rouge_1_scores_path = "Scores/results_duc%s_rouge-1.csv"
 rouge_2_scores_path = "Scores/results_duc%s_rouge-2.csv"
 
 ALL_SENTENCES = {}
+
 
 def LoadSentencesAndFScores():
     
@@ -128,9 +130,17 @@ def LoadSentencesAndFScores():
     print(len(total_sentences_train),len(total_scores_train))
     print(len(total_sentences_evaluate),len(total_scores_evaluate))
     
-    return (clear_sentence_array(total_sentences_train),
+    
+    print((clear_sentence_array(total_sentences_train))[0])
+    
+    training_set = np.array(sentence2ids((clear_sentence_array(total_sentences_train))))
+    
+    for i in range(10):
+        print(len(training_set[i]))
+    
+    return (sentence2ids(clear_sentence_array(total_sentences_train)),
            total_sentences_train,
-           clear_sentence_array(total_sentences_evaluate),
+           sentence2ids(clear_sentence_array(total_sentences_evaluate)),
            total_scores_evaluate)                    
 
 def AggregateDucData(target_path):
@@ -152,6 +162,7 @@ def AggregateDucData(target_path):
 
 
 def _clear_str(string):
+    
     '''
     Tokenized | string clean
     '''
@@ -192,11 +203,9 @@ def build_vocab(filename):
     return word_to_id
 
 
-
-#==============================================================================
-# print(len(build_vocab("/home/chosenone/download/corpus/ducdata.txt")))
-# print(build_vocab("/home/chosenone/download/corpus/ducdata.txt"))
-#==============================================================================
+def sentence2ids(sentences):
+    
+    return [[word_to_id[word] for word in sentence.split()] for sentence in sentences]
 
 
 def batch_iter(data,batch_size,num_epochs,shuffle=True):
@@ -223,10 +232,15 @@ def batch_iter(data,batch_size,num_epochs,shuffle=True):
             
             yield shuffled_data[start:end]
  
+            
+# build vocabulary first                 
+word_to_id = build_vocab(vocabulary_path)        
+
+LoadSentencesAndFScores()
+
+# aggregateDUCdata into one file for further use        
 #==============================================================================
 # AggregateDucData("/home/chosenone/download/corpus/ducdata.txt")                
 #==============================================================================
-            
-                 
-        
-        
+
+
