@@ -1,6 +1,0 @@
-model_checkpoint_path: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-800"
-all_model_checkpoint_paths: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-400"
-all_model_checkpoint_paths: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-500"
-all_model_checkpoint_paths: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-600"
-all_model_checkpoint_paths: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-700"
-all_model_checkpoint_paths: "/home/chosenone/Neural-Networks/tf/CNN-Sentence-Classification/runs/1490083425/checkpoints/model-800"
