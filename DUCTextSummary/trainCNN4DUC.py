@@ -30,18 +30,18 @@ from tensorflow.contrib import learn
 # data parameters
 #==============================================================================
 
-tf.flags.DEFINE_float("validation_set_percentage",0.1,
+tf.flags.DEFINE_float("validation_set_percentage",0.05,
         "the percentage of training examples that will be used for validation set")
 
 #==============================================================================
 # model hyperparameters
 #==============================================================================
 
-tf.flags.DEFINE_float("learning_rate",0.001,"learning rate(default 0.001)")
+tf.flags.DEFINE_float("learning_rate",0.0005,"learning rate(default 0.001)")
 
 tf.flags.DEFINE_integer("embedding_size",200,"the size of word embeeding (default 200)")
 
-tf.flags.DEFINE_integer("num_filters",100,"the number of filters for each filter size(default 128)")
+tf.flags.DEFINE_integer("num_filters",200,"the number of filters for each filter size(default 128)")
 
 tf.flags.DEFINE_string("filter_sizes","3,4,5","comma-separated filter sizes(default 3,4,5)")
 
@@ -55,7 +55,7 @@ tf.flags.DEFINE_float("l2_reg_lambda",0.0,"the l2 regularization lambda(default 
 # train parameters
 #==============================================================================
 
-tf.flags.DEFINE_integer("batch_size",64,"Batch size (default size 64)")
+tf.flags.DEFINE_integer("batch_size",128,"Batch size (default size 64)")
 
 tf.flags.DEFINE_integer("num_epochs",200,"Epoch sizes(default size 200)")
 
@@ -96,9 +96,10 @@ x_data,y,_,_ = data_helper.LoadSentencesAndFScores()
 
 # construct vocabulary
 
-max_sentence_length = min([len(re.split(r"\s+",sent.strip())) for sent in x_data])
+max_sentence_length = max([len(re.split(r"\s+",sent.strip())) for sent in x_data])
 
 print(max_sentence_length)
+
 
 vocab_processor = learn.preprocessing.VocabularyProcessor(150)
 x = np.array(list(vocab_processor.fit_transform(x_data)))
@@ -116,6 +117,8 @@ y_shuffled = y[shuffled_indices]
 # have a try with k-fold cross-validation later.
 
 validation_set_index = -1 * int(FLAGS.validation_set_percentage * float(len(y)))
+validation_set_index = -500
+
 x_train,x_val = x_shuffled[:validation_set_index],x_shuffled[validation_set_index:]
 y_train,y_val = y_shuffled[:validation_set_index],y_shuffled[validation_set_index:]
 
@@ -239,9 +242,10 @@ with tf.Graph().as_default():
             train_step(x_batch,y_batch,writer=train_summary_writer)
             current_step = tf.train.global_step(sess,global_step)
             if current_step % FLAGS.evaluate_interval == 0:
-                print("Evaluation:\n")
-                validation_step(x_batch,y_batch,writer=validation_summary_writer)
-                print("")
+                
+                print("##############\nEvaluation:\n")
+                validation_step(x_val,y_val,writer=validation_summary_writer)
+                print("##############")
             if current_step % FLAGS.checkpoint_interval == 0:
                 path = saver.save(sess,checkpoint_prefix,global_step=current_step)
                 print("Saved the model checkpoint to %s " % path)

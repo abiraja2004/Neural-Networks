@@ -25,6 +25,8 @@ vocabulary_path = "/home/chosenone/download/corpus/ducdata.txt"
 rouge_1_scores_path = "Scores/results_duc%s_rouge-1.csv"
 rouge_2_scores_path = "Scores/results_duc%s_rouge-2.csv"
 
+evaluate_data_path = "/home/chosenone/Neural-Networks/DUCTextSummary/Corpus/Test/"
+
 ALL_SENTENCES = {}
 
 
@@ -34,7 +36,40 @@ def LoadSentencesAndFScores():
     
         print("Parse the duc%s data...\n\n" % year)
         
+        cluster_id = 1
+        
+        another_cluster = True
+        
+        sentence_index = 0
+        
+        refrence_id = 1
+        
+        for line in open(corpus_path % year,"rb"):
+                if re.match(r"^0(\.[0-9]+)?\s+[0-9]+\s+.",line):
+                    three = line.split()
+                    what_the_fuck = three[0]
+                    document_id = int(three[1])
+                    sentence = " ".join(three[2:])
+                    
+                    another_cluster = True
+                    refrence_id = 1
+                    
+                else:
+                    
+                    if not os.path.exists(summary_path % year + ("task%d_reference%d" % (cluster_id+1,refrence_id))):
+                        with open(summary_path % year + ("task%d_reference%d" % (cluster_id,refrence_id)),'wb') as target:
+                                target.write(line)
+                                refrence_id += 1
+                    
+                    
+                    if another_cluster:
+                        another_cluster = False
+                        cluster_id += 1
+                    
+                    
+        
         with open(corpus_path % year,'rb') as f:
+            
             content = f.read()
             clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
             
@@ -45,18 +80,29 @@ def LoadSentencesAndFScores():
             sent_index = 0
             
             for i,cluster in enumerate(clusters):
+                
                 print("No.%d ..." % (i+1))
                 
-                document = re.split(r"[\r\n]+(?=0.)",cluster)
+                document = re.split(r"\.?[\r\n]+(?=[0-9])",cluster)
                 
                 document = [sent.strip() for sent in document]
                 
-                summary = document[0]
+                refrence_summary = document[0]
                 
-                # write the gold standard summary into the reference dir of ROUGE
-                if not os.path.exists(summary_path % year + ("task%d_reference" % (i+1))):
-                    with open(summary_path % year + ("task%d_reference" % (i+1)),'wb') as target:
-                            target.write(summary.strip()+"\r\n")
+                refrence_summarys = re.split(r"\r\n",refrence_summary.strip())
+
+#==============================================================================
+#                 if i == 26 and int(year) == 2002:
+#                     print(len(refrence_summarys))
+#                     print(refrence_summarys)
+#                     raise("motherfucker")
+#==============================================================================
+                
+                for refre in range(len(refrence_summarys)):
+                    # write the gold standard summary into the reference dir of ROUGE
+                    if not os.path.exists(summary_path % year + ("task%d_reference%d" % (i+1,refre))):
+                        with open(summary_path % year + ("task%d_reference%d" % (i+1,refre)),'wb') as target:
+                                target.write(refrence_summarys[refre].strip()+"\r\n")
                     
                 
                 # get the sentences for every document 
@@ -108,7 +154,7 @@ def LoadSentencesAndFScores():
                     rouge2_scores.append(row[5])
             
         for i,sentence in enumerate(ALL_SENTENCES[key]):
-            scores.append(alpha * float(rouge1_scores[i]) + (1 - alpha) * float(rouge2_scores[i]))
+            scores.append(10 * alpha * float(rouge1_scores[i]) + 10 * (1 - alpha) * float(rouge2_scores[i]))
         
         if key in ['2001','2002']:
             total_sentences_train += ALL_SENTENCES[key]
@@ -141,8 +187,8 @@ def LoadSentencesAndFScores():
 #==============================================================================
     
 
-    return ((clear_sentence_array(total_sentences_train)),
-           total_sentences_train,
+    return ((clear_sentence_array(total_sentences_train + total_sentences_evaluate)),
+           total_scores_train + total_scores_evaluate,
            (clear_sentence_array(total_sentences_evaluate)),
            total_scores_evaluate)                    
 
@@ -162,6 +208,47 @@ def AggregateDucData(target_path):
         if exist:
             with open(target_path,"a") as target:
                     target.writelines(clear_sentence_array(sentences))
+
+def spliteDUC2004DataforEvaluateModel():
+    
+    for year in ['2004']:
+    
+        print("Split the duc%s data...\n\n" % year)
+        
+        with open(corpus_path % year,'rb') as f:
+            content = f.read()
+            clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
+            
+            print("Total clusters : %d\n\n" % len(clusters))
+            
+            total = 0
+            sent_index = 0
+            
+            for i,cluster in enumerate(clusters):
+                print("Geting No.%d Cluster..." % (i+1))
+                
+                document = re.split(r"[\r\n]+(?=0.)",cluster)
+                
+                document = [sent.strip() for sent in document]
+                
+                # get the sentences for every cluster 
+                
+                for index in range(1,len(document)):
+                       
+                       three = re.split(r"\s",document[index])
+                       
+                       sent_index += 1
+                       
+                       with open(evaluate_data_path + ("cluster%d" % i),'a') as target:
+                           target.write(" ".join(three[2:]) + "\r\n")
+                               
+                       
+                       if index == len(document) - 1:
+                           total += (int(three[1]) + 1)
+                        
+                print("No.%d Cluster finished\n" % i)
+            
+            print("Total document: %d ,Total sentence: %d ..." % (total,sent_index))
 
 
 def _clear_str(string):
@@ -208,7 +295,9 @@ def build_vocab(filename):
 
 def sentence2ids(sentences):
     
-    return [[word_to_id[word] for word in sentence.split()] for sentence in sentences]
+    word_to_id = build_vocab(vocabulary_path)
+    
+    return len(word_to_id),[[word_to_id[word] for word in re.split(r"\s+",sent.strip())] for sentence in sentences]
 
 
 def batch_iter(data,batch_size,num_epochs,shuffle=True):
@@ -237,13 +326,35 @@ def batch_iter(data,batch_size,num_epochs,shuffle=True):
  
             
 # build vocabulary first                 
-word_to_id = build_vocab(vocabulary_path)        
+#==============================================================================
+# word_to_id = build_vocab(vocabulary_path)        
+#==============================================================================
 
-LoadSentencesAndFScores()
+#==============================================================================
+# LoadSentencesAndFScores()
+#==============================================================================
 
+i = 0
+max_len = -1
+for line in open(corpus_path % "2002","rb"):
+        if re.match(r"^0(\.[0-9]+)?\s+[0-9]+\s+.",line) and i < 80 :
+            three = line.split()
+            cur_len = len(three) - 2
+            sentence = " ".join(three[2:])
+            if cur_len > max_len:
+                max_len = cur_len
+            i += 1
+print(max_len)
+            
 # aggregateDUCdata into one file for further use        
 #==============================================================================
 # AggregateDucData("/home/chosenone/download/corpus/ducdata.txt")                
+#==============================================================================
+
+
+# split the DUC2004
+#==============================================================================
+# spliteDUC2004DataforEvaluateModel()
 #==============================================================================
 
 

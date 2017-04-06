@@ -108,6 +108,7 @@ max_sentence_length = max([len(sent.split(" ")) for sent in x_data])
 vocab_processor = learn.preprocessing.VocabularyProcessor(max_sentence_length)
 x = np.array(list(vocab_processor.fit_transform(x_data)))
 
+print(max_sentence_length)
 # shuffle data
 np.random.seed(10)
 shuffled_indices = np.random.permutation(np.arange(len(y)))

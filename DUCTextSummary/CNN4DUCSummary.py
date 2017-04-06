@@ -9,7 +9,7 @@ CNN for DUC Doc Summmary
 
 Structure:
 A embedding lay,followed by a convolutional lay and a max-pooling lay,at last 
-regression layer.
+regression(maybe) layer.
 """
 
 import tensorflow as tf
@@ -58,6 +58,7 @@ class CNN4DUCSummary(object):
                                     strides=[1,1,1,1],
                                     padding="VALID",
                                     name="conv")
+                # shape of convolution output is [batch_size,sequence_length - filter_size + 1,1,num_filters]
                 
                 # apply activation function
                 
@@ -70,7 +71,7 @@ class CNN4DUCSummary(object):
                                         strides=[1,1,1,1],
                                         padding="VALID",
                                         name="pool")
-                
+                # shape of pooled [batch_size,1,1,num_filters] 
                 pooled_output.append(pooled)
                 
         # combine all the pooled output
@@ -79,7 +80,7 @@ class CNN4DUCSummary(object):
         
         self.h_pool = tf.concat(pooled_output,axis=3)
         
-        self.h_pool_flatened = tf.reshape(self.h_pool,[-1,num_filters_total])
+        self.h_pool_flatened = tf.reshape(self.h_pool,[-1,num_filters_total],name="sentences")
         
         
         # add dropout 
@@ -98,16 +99,21 @@ class CNN4DUCSummary(object):
             l2_loss += tf.nn.l2_loss(W)
             # l2_loss += tf.nn.l2_loss(b) # really?
             
-            self._scores = tf.nn.xw_plus_b(self.h_pool_flatened,W,b,name="scores")
-            self._predictions = tf.argmax(self._scores,axis=1,name="predictions")                           
+            self._scores = tf.nn.sigmoid(tf.nn.xw_plus_b(self.h_pool_flatened,W,b,name="W_T_plus_b"),name="scores")
         
-        # calculate cross-entropy
+        # calculate cost-function
                              
         with tf.name_scope("loss"):
-            losses = tf.nn.softmax_cross_entropy_with_logits(logits=self._scores,labels=self._input_y)
-            self._loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
-        
-        # Accuracy
+          
+#==============================================================================
+#             losses = 1.0 / 2 * tf.reduce_mean(tf.pow((self._scores - self._input_y),2))
+#==============================================================================
+            
+            losses = 1.0 / 2 * tf.reduce_mean(-(self._input_y * tf.log(self._scores) 
+                                              + (1 - self._input_y) * tf.log(1 - self._scores)))
+            
+            self._loss = losses + l2_reg_lambda * l2_loss
 
-        correct_predictions = tf.equal(self._predictions,tf.argmax(self._input_y,axis=1))
-        self._accuracy = tf.reduce_mean(tf.cast(correct_predictions,"float"),name="accuracy")                                
+
+
+
