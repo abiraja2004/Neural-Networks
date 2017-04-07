@@ -20,7 +20,7 @@ corpus_path = "/home/chosenone/download/DUC_COPRUS/duc%s.txt"
 summary_path = "/home/chosenone/download/rouge2.0-0.2/duc%s/reference/"
 system_path = "/home/chosenone/download/rouge2.0-0.2/duc%s/system/"
 
-vocabulary_path = "/home/chosenone/download/corpus/ducdata.txt"
+vocabulary_path = "/home/chosenone/download/corpus/ducdata_version_0.2.txt"
 
 rouge_1_scores_path = "Scores/results_duc%s_rouge-1.csv"
 rouge_2_scores_path = "Scores/results_duc%s_rouge-2.csv"
@@ -38,97 +38,50 @@ def LoadSentencesAndFScores():
         
         cluster_id = 1
         
-        another_cluster = True
+        another_cluster = False
         
         sentence_index = 0
         
         refrence_id = 1
         
+        sentences = []
+        
+        reference_num = 0
+        
         for line in open(corpus_path % year,"rb"):
-                if re.match(r"^0(\.[0-9]+)?\s+[0-9]+\s+.",line):
+            if  line.strip():
+                if re.match(r"^[01](\.[0-9]+)?\s+[0-9]+\s+.",line):
                     three = line.split()
                     what_the_fuck = three[0]
                     document_id = int(three[1])
                     sentence = " ".join(three[2:])
                     
-                    another_cluster = True
-                    refrence_id = 1
+                    sentences.append(sentence)
+                    sentence_index += 1
                     
-                else:
-                    
-                    if not os.path.exists(summary_path % year + ("task%d_reference%d" % (cluster_id+1,refrence_id))):
-                        with open(summary_path % year + ("task%d_reference%d" % (cluster_id,refrence_id)),'wb') as target:
-                                target.write(line)
-                                refrence_id += 1
-                    
+                    cur_cluster_id = cluster_id - 1 if not another_cluster else cluster_id
+                    with open(system_path % year + "task%d_%s" % (cur_cluster_id,sentence_index),
+                                 "wb") as target:
+                           target.write(sentence)
                     
                     if another_cluster:
                         another_cluster = False
                         cluster_id += 1
-                    
-                    
-        
-        with open(corpus_path % year,'rb') as f:
-            
-            content = f.read()
-            clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
-            
-            print("Total clusters : %d\n\n" % len(clusters))
-            
-            total = 0
-            sentences = []
-            sent_index = 0
-            
-            for i,cluster in enumerate(clusters):
-                
-                print("No.%d ..." % (i+1))
-                
-                document = re.split(r"\.?[\r\n]+(?=[0-9])",cluster)
-                
-                document = [sent.strip() for sent in document]
-                
-                refrence_summary = document[0]
-                
-                refrence_summarys = re.split(r"\r\n",refrence_summary.strip())
-
-#==============================================================================
-#                 if i == 26 and int(year) == 2002:
-#                     print(len(refrence_summarys))
-#                     print(refrence_summarys)
-#                     raise("motherfucker")
-#==============================================================================
-                
-                for refre in range(len(refrence_summarys)):
-                    # write the gold standard summary into the reference dir of ROUGE
-                    if not os.path.exists(summary_path % year + ("task%d_reference%d" % (i+1,refre))):
-                        with open(summary_path % year + ("task%d_reference%d" % (i+1,refre)),'wb') as target:
-                                target.write(refrence_summarys[refre].strip()+"\r\n")
-                    
-                
-                # get the sentences for every document 
-                
-                for index in range(1,len(document)):
-                       
-                       three = re.split(r"\s",document[index])
-                       
-                       sent_index += 1
-                       
-                       with open(system_path % year + "task%d_%s" % (i+1,sent_index),
-                                 "wb") as target:
-                           target.write(" ".join(three[2:])+"\r\n")
-                               
-                       sentences.append(" ".join(three[2:]))
-                       
-                       if index == len(document) - 1:
-                           total += (int(three[1]) + 1)
                         
-                print("\n")
+                    reference_num = 0
+                else:
+        
+                    reference_num += 1
+                    
+                    with open(summary_path % year + ("task%d_reference%d" % (cluster_id,reference_num)),'wb') as target:
+                                target.write(line)
+                    another_cluster = True
+                    
+        print("Cluster Number: %d,Total sentences:%d "%(cluster_id-1,sentence_index))
+       
+                        
+        ALL_SENTENCES[year] = sentences
             
-            print("Total document: %d ,Total sentence: %d ..." % (total,sent_index))
-            
-            ALL_SENTENCES[year] = sentences
-    
-
     total_sentences_train = []
     total_sentences_evaluate = []                     
     total_scores_train = []
@@ -324,7 +277,36 @@ def batch_iter(data,batch_size,num_epochs,shuffle=True):
             
             yield shuffled_data[start:end]
  
+def TestReForDUC():
+    i = 0
+    max_len = 0
+    reference_num = 0
+    max_reference_num = -1
+    for line in open(corpus_path % "2002","rb"):
+        if  line.strip():
+            if re.match(r"^[01](\.[0-9]+)?\s+[0-9]+\s+.",line):
+                three = line.split()
+                cur_len = len(three) - 2
+                sentence = " ".join(three[2:])
+                i += 1
+                if cur_len > 60:
+                    max_len += 1
+    #==============================================================================
+    #                 print(line)
+    #                 print("++++")
+    #==============================================================================
+                if reference_num > max_reference_num:
+                    max_reference_num = reference_num
+                
+                reference_num = 0
+            else:
+    
+                print(line)
+                print("+++")
+                reference_num += 1
+                print(reference_num)
             
+    print(max_len,i,max_reference_num)            
 # build vocabulary first                 
 #==============================================================================
 # word_to_id = build_vocab(vocabulary_path)        
@@ -334,21 +316,10 @@ def batch_iter(data,batch_size,num_epochs,shuffle=True):
 # LoadSentencesAndFScores()
 #==============================================================================
 
-i = 0
-max_len = -1
-for line in open(corpus_path % "2002","rb"):
-        if re.match(r"^0(\.[0-9]+)?\s+[0-9]+\s+.",line) and i < 80 :
-            three = line.split()
-            cur_len = len(three) - 2
-            sentence = " ".join(three[2:])
-            if cur_len > max_len:
-                max_len = cur_len
-            i += 1
-print(max_len)
-            
+    
 # aggregateDUCdata into one file for further use        
 #==============================================================================
-# AggregateDucData("/home/chosenone/download/corpus/ducdata.txt")                
+# AggregateDucData(vocabulary_path)                
 #==============================================================================
 
 
@@ -358,3 +329,59 @@ print(max_len)
 #==============================================================================
 
 
+
+# for the purpose in the future
+
+#==============================================================================
+#         with open(corpus_path % year,'rb') as f:
+#             
+#             content = f.read()
+#             clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
+#             
+#             print("Total clusters : %d\n\n" % len(clusters))
+#             
+#             total = 0
+#             sentences = []
+#             sent_index = 0
+#             
+#             for i,cluster in enumerate(clusters):
+#                 
+#                 print("No.%d ..." % (i+1))
+#                 
+#                 document = re.split(r"\.?[\r\n]+(?=[0-9])",cluster)
+#                 
+#                 document = [sent.strip() for sent in document]
+#                 
+#                 refrence_summary = document[0]
+#                 
+#                 refrence_summarys = re.split(r"\r\n",refrence_summary.strip())
+# 
+#                 
+#                 for refre in range(len(refrence_summarys)):
+#                     # write the gold standard summary into the reference dir of ROUGE
+#                     if not os.path.exists(summary_path % year + ("task%d_reference%d" % (i+1,refre))):
+#                         with open(summary_path % year + ("task%d_reference%d" % (i+1,refre)),'wb') as target:
+#                                 target.write(refrence_summarys[refre].strip()+"\r\n")
+#                     
+#                 
+#                 # get the sentences for every document 
+#                 
+#                 for index in range(1,len(document)):
+#                        
+#                        three = re.split(r"\s",document[index])
+#                        
+#                        sent_index += 1
+#                        
+#                        with open(system_path % year + "task%d_%s" % (i+1,sent_index),
+#                                  "wb") as target:
+#                            target.write(" ".join(three[2:])+"\r\n")
+#                                
+#                        sentences.append(" ".join(three[2:]))
+#                        
+#                        if index == len(document) - 1:
+#                            total += (int(three[1]) + 1)
+#                         
+#                 print("\n")
+#             
+#             print("Total document: %d ,Total sentence: %d ..." % (total,sent_index))
+#==============================================================================
