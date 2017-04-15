@@ -40,7 +40,7 @@ def BidirectionalGRU4Summ(object):
                                            name="embedding")
             self._embedded_words = tf.nn.embedding_lookup(self._embeddings,self._input_x)
         
-        with tf.name_scope("bi-gru"):
+        with tf.name_scope("bi-gru-word"):
             
             # re-format the data
             x = tf.transpose(self._input_x,[1,0,2])
@@ -52,10 +52,15 @@ def BidirectionalGRU4Summ(object):
             gru_bw_cell = rnn.GRUCell(word_hidden_size,activation=tf.nn.relu)
             
             outputs,_fw,_bw = rnn.static_bidirectional_rnn(gru_fw_cell,gru_bw_cell,x,dtype=tf.float32)
-        
             
-        
-        
+            # shape of outputs:[time][batch][cell_fw.output_size + cell_bw.output_size]
+            output_trans = tf.transpose(outputs,[1,0,2])
+            input_to_sentence_level = tf.reduce_mean(output_trans,axis=1) # shape:[batch][size*2] 
+            
+        with tf.name_scope("bi-gru-sentence"):
+            
+            input_sentence_level = tf.expand_dims(input_to_sentence_level,axis=1)
+            
         
         
         
