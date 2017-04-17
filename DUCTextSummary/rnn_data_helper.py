@@ -119,21 +119,23 @@ def LoadSentencesAndFScores():
         
         
         
-        print("-------split line---------")
+        print("\n")
         ALL_CLUSTERS[year] = clusters
     
 
         
-    print(len(ALL_CLUSTERS))
+#==============================================================================
+#     print(len(ALL_CLUSTERS))
+#     
+#     print(len(ALL_CLUSTERS['2001']))
+#     print(len(ALL_CLUSTERS['2002']))
+#     print(len(ALL_CLUSTERS['2004']))
+#     
+#     print(len(ALL_CLUSTERS['2001']) + len(ALL_CLUSTERS['2002'])
+#            + len(ALL_CLUSTERS['2004']))
+#==============================================================================
     
-    print(len(ALL_CLUSTERS['2001']))
-    print(len(ALL_CLUSTERS['2002']))
-    print(len(ALL_CLUSTERS['2004']))
-    
-    print(len(ALL_CLUSTERS['2001']) + len(ALL_CLUSTERS['2002'])
-           + len(ALL_CLUSTERS['2004']))
-    
-    print("------split line------")
+    print("Features About the DUC Dataset:")
     total = 0
     more_than_400_sentences = 0
     length = 550
@@ -177,8 +179,10 @@ def clear_sentence_array(sentences):
 def build_vocab(filename):
     
     word_to_id = {}
+    id_to_word = []
     index = 0
     word_to_id[UNKNOWN] = index
+    id_to_word.append(UNKNOWN)          
     index += 1
           
     for line in open(filename,"rb"):
@@ -186,9 +190,10 @@ def build_vocab(filename):
         for word in words:
             if not word in word_to_id:
                 word_to_id[word] = index
+                id_to_word.append(word)          
                 index += 1          
 
-    return word_to_id
+    return word_to_id,id_to_word
 
 
 # transform the document into id matrix, maybe there need padding or truncating
@@ -217,55 +222,76 @@ def batch_iter(num_epochs,shuffle=True):
     '''
     return one document in numpy-array format during every iteration
     '''
-    # build vocabulary    
-    word_to_id = build_vocab(vocabulary_path)
-    # load sentences  and scores
-    LoadSentencesAndFScores()
     
-    for year in ALL_CLUSTERS.iterkeys():
-        cur_duc = ALL_CLUSTERS[year]
-        for i in range(len(cur_duc)):
-          sentences_cleared = clear_sentence_array(ALL_CLUSTERS[year][i]['sentence'])
-          
-          sentences_in_word = [sentence.split() for sentence in sentences_cleared]
-          scores = ALL_CLUSTERS[year][i]['score']
-          
-          sentences_in_id = sentence2ids(word_to_id,sentences_in_word)
-          
-          # clip scores
-          document_len = len(sentences_in_id)
-          
-          if len(scores) < document_len:
-              scores += [0.0] * (document_len - len(scores))
-          else:
-              scores = scores[:document_len]
-          
-          sentences_in_id = np.array(sentences_in_id)
-          scores = np.reshape(np.array(scores),(-1,1))
-          
-          yield sentences_in_id,scores
+    for epoch in range(num_epochs):
     
-            
-# build vocabulary first                 
-#==============================================================================
-# word_to_id = len(build_vocab(vocabulary_path))
-# print(word_to_id)        
-#==============================================================================
+        for year in ["2001","2002"]:
+            cur_duc = ALL_CLUSTERS[year]
+            for i in range(len(cur_duc)):
+              sentences_cleared = clear_sentence_array(ALL_CLUSTERS[year][i]['sentence'])
+              
+              sentences_in_word = [sentence.split() for sentence in sentences_cleared]
+              scores = ALL_CLUSTERS[year][i]['score']
+              
+              sentences_in_id = sentence2ids(word_to_id,sentences_in_word)
+              
+              # clip scores
+              document_len = len(sentences_in_id)
+              
+              if len(scores) < document_len:
+                  scores += [0.0] * (document_len - len(scores))
+              else:
+                  scores = scores[:document_len]
+              
+              sentences_in_id = np.array(sentences_in_id)
+              scores = np.reshape(np.array(scores),(-1,1))
+              
+              yield sentences_in_id,scores
+    
+def evaluate_data():
+    evaluate_duc = ALL_CLUSTERS['2004']
+    
+    for i in range(len(evaluate_duc)):
+      sentences_raw = ALL_CLUSTERS['2004'][i]['sentence']  
+      sentences_cleared = clear_sentence_array(sentences_raw)
+      
+      sentences_in_word = [sentence.split() for sentence in sentences_cleared]
+      scores = ALL_CLUSTERS['2004'][i]['score']
+      
+      sentences_in_id = sentence2ids(word_to_id,sentences_in_word)
+      
+      # clip scores
+      document_len = len(sentences_in_id)
+      
+      if len(scores) < document_len:
+          scores += [0.0] * (document_len - len(scores))
+      else:
+          scores = scores[:document_len]
+      
+      sentences_in_id = np.array(sentences_in_id)
+      scores = np.reshape(np.array(scores),(-1,1))
+      
+      yield sentences_in_id,scores,sentences_raw
+
+
+# SET THE NECESSARY VARIABLES            
+# build vocabulary    
+word_to_id,_ = build_vocab(vocabulary_path)
+# load sentences  and scores
+LoadSentencesAndFScores()
+
 
 # just for debug
-verbose = True
-i = 0
-for a,b in batch_iter(1):
-    if i==1:
-       print(np.array(a).shape)
-       print(np.reshape(np.array(b),(-1,1)).shape)
-       verbose = False
-    print(len(a))
-    print(len(b))
-    print("+++")
-    i += 1
-    
-print(i)
+#==============================================================================
+# verbose = True
+# i = 0
+# for a,b,_ in evaluate_data():
+#     
+#     i += (len(_))
+#     
+# print(i)
+#==============================================================================
+
 def TestReForDUC():
     i = 0
     max_len = 0
@@ -301,24 +327,5 @@ def TestReForDUC():
                 reference_num += 1
             
     print(max_len,i,max_reference_num,sent_index,more_than_200_num,total_num / max_reference_num)
-
-
-#==============================================================================
-# TestReForDUC()
-#==============================================================================
-#==============================================================================
-# LoadSentencesAndFScores()
-#==============================================================================
-
-# aggregateDUCdata into one file for further use        
-#==============================================================================
-# AggregateDucData(vocabulary_path)                
-#==============================================================================
-
-
-# split the DUC2004
-#==============================================================================
-# spliteDUC2004DataforEvaluateModel()
-#==============================================================================
 
 
