@@ -17,6 +17,9 @@ import time
 import datetime
 import data_helper
 import re
+import word2vec
+import random
+from random import shuffle
 
 from CNN4DUCSummary import CNN4DUCSummary
 from tensorflow.contrib import learn
@@ -37,17 +40,17 @@ tf.flags.DEFINE_float("validation_set_percentage",0.05,
 # model hyperparameters
 #==============================================================================
 
-tf.flags.DEFINE_float("learning_rate",0.0005,"learning rate(default 0.001)")
+tf.flags.DEFINE_float("learning_rate",0.001,"learning rate(default 0.001)")
 
-tf.flags.DEFINE_integer("embedding_size",200,"the size of word embeeding (default 200)")
+tf.flags.DEFINE_integer("embedding_size",25,"the size of word embeeding (default 25)")
 
-tf.flags.DEFINE_integer("num_filters",200,"the number of filters for each filter size(default 128)")
+tf.flags.DEFINE_integer("num_filters",30,"the number of filters for each filter size(default 30)")
 
-tf.flags.DEFINE_string("filter_sizes","3,4,5","comma-separated filter sizes(default 3,4,5)")
+tf.flags.DEFINE_string("filter_sizes","1,2,3,4","comma-separated filter sizes(default 1~6)")
 
 tf.flags.DEFINE_float("keep_prob",0.5,"the probability used for dropout(default 0.5)")
 
-tf.flags.DEFINE_float("l2_reg_lambda",0.0,"the l2 regularization lambda(default 0)")
+tf.flags.DEFINE_float("l2_reg_lambda",0,"the l2 regularization lambda(default 0)")
 
 
 
@@ -55,9 +58,9 @@ tf.flags.DEFINE_float("l2_reg_lambda",0.0,"the l2 regularization lambda(default 
 # train parameters
 #==============================================================================
 
-tf.flags.DEFINE_integer("batch_size",128,"Batch size (default size 64)")
+tf.flags.DEFINE_integer("batch_size",256,"Batch size (default size 64)")
 
-tf.flags.DEFINE_integer("num_epochs",200,"Epoch sizes(default size 200)")
+tf.flags.DEFINE_integer("num_epochs",30,"Epoch sizes(default size 200)")
 
 tf.flags.DEFINE_integer("evaluate_interval",100,"Evaluate model interval(default 100)")
 
@@ -88,39 +91,71 @@ print("\n")
 #==============================================================================
 # Data Preparation
 #==============================================================================
+# Load Pre-Trained Model 
+begin = time.time()
+model = word2vec.load('duc_corpus_word_vector.bin')
+end = time.time()
+
+print("Pre-trained word vector loaded in %.3f s..." % (end - begin))
+
 
 # Load data
 print("Loading Data...\n")
 
-x_data,y,_,_ = data_helper.LoadSentencesAndFScores()
+x_data,y,features_train,x_validation_raw,y_validation_raw,features_val = data_helper.LoadSentencesAndFScores()
+
+# just for debug
+x_validation = []
+y_validation = []
+features_validation = []
+indexs = range(len(x_validation_raw))
+shuffle(indexs)
+for i in indexs:
+    x_validation.append(x_validation_raw[i])
+    y_validation.append(y_validation_raw[i])
+    features_validation.append(features_val[i])
 
 # construct vocabulary
+x_train_len = len(y)
+x_val_len = len(y_validation)
 
-max_sentence_length = max([len(re.split(r"\s+",sent.strip())) for sent in x_data])
+sentence_array = [re.split(r"\s+",sent.strip()) for sent in x_data]
 
-print(max_sentence_length)
+vocab_processor = learn.preprocessing.VocabularyProcessor(60)
+x = np.array(list(vocab_processor.fit_transform(x_data + x_validation)))
+y = np.reshape(np.array(y + y_validation[:5000]),[-1,1])
+y_validation = np.reshape(np.array(y_validation),[-1,1])
 
 
-vocab_processor = learn.preprocessing.VocabularyProcessor(150)
-x = np.array(list(vocab_processor.fit_transform(x_data)))
-y = np.reshape(np.array(y),[-1,1])
 print(len(vocab_processor.vocabulary_))
+print(len(vocab_processor.vocabulary_._reverse_mapping))
 print(len(y))
+
+# pre-trained word vector
+word_embedding = []
+
+for i in range(len(vocab_processor.vocabulary_)):
+    cur_word = vocab_processor.vocabulary_._reverse_mapping[i]
+    if cur_word in model.vocab:
+        word_embedding.append(list(model[cur_word]))
+    else:
+        word_embedding.append([random.uniform(-0.5,0.5)] * FLAGS.embedding_size)
 
 # shuffle data
 np.random.seed(10)
 shuffled_indices = np.random.permutation(np.arange(len(y)))
-x_shuffled = x[shuffled_indices]
+x_shuffled = x[:x_train_len + 5000][shuffled_indices]
 y_shuffled = y[shuffled_indices]
 
 # split train-test set
 # have a try with k-fold cross-validation later.
 
-validation_set_index = -1 * int(FLAGS.validation_set_percentage * float(len(y)))
-validation_set_index = -500
+validation_set_index = -1000
 
-x_train,x_val = x_shuffled[:validation_set_index],x_shuffled[validation_set_index:]
-y_train,y_val = y_shuffled[:validation_set_index],y_shuffled[validation_set_index:]
+x_train,x_val = x_shuffled,x[validation_set_index:]
+y_train,y_val = y_shuffled,y_validation[validation_set_index:]
+features_train = np.concatenate([features_train,features_validation[:5000]],axis=0)
+features_validation = features_validation[-1000:]
 
 print("Vocabulary Size: %s" % len(vocab_processor.vocabulary_._mapping))
 print("Length of train/validation set: %d , %d ." % (len(y_train),len(y_val)))
@@ -140,9 +175,9 @@ with tf.Graph().as_default():
         cnn = CNN4DUCSummary(sequence_length=x_train.shape[1],
                        num_classes=y_train.shape[1],
                        vocab_size=len(vocab_processor.vocabulary_),
-                       embedding_size=FLAGS.embedding_size,
+                       embedding_size=FLAGS.embedding_size,feature_size=np.shape(features_train)[1],
                        filter_sizes=list(map(int,FLAGS.filter_sizes.split(","))),
-                       num_filters=FLAGS.num_filters,
+                       num_filters=FLAGS.num_filters,fine_tune=True,word_embedding=word_embedding,
                        l2_reg_lambda=FLAGS.l2_reg_lambda)
         
         # the detail of train procedure
@@ -197,30 +232,35 @@ with tf.Graph().as_default():
         
         # a single training step
         
-        def train_step(x_batch,y_batch,writer=None):
+        def train_step(x_batch,y_batch,features_batch,writer=None):
             '''
             a single training step
             '''
-            feed_dict = {cnn._input_x:x_batch,
-                         cnn._input_y:y_batch,
-                         cnn._keep_prob:FLAGS.keep_prob}
-            _,step,summaries,loss = sess.run([train_op,global_step,train_summary_op
-                      ,cnn._loss],feed_dict)
-            time_str = datetime.datetime.now().isoformat()
-            
-            print("%s: Step: %d,Loss: %.4f" % (time_str,step,loss))
-            
-            if writer:
-                writer.add_summary(summaries,step)
+            try:
+                feed_dict = {cnn._input_x:x_batch,
+                             cnn._input_y:y_batch,
+                             cnn._features:features_batch,
+                             cnn._keep_prob:FLAGS.keep_prob}
+                _,step,summaries,loss = sess.run([train_op,global_step,train_summary_op
+                          ,cnn._loss],feed_dict)
+                time_str = datetime.datetime.now().isoformat()
+                
+                print("%s: Step: %d,Loss: %.4f" % (time_str,step,loss))
+                
+                if writer:
+                    writer.add_summary(summaries,step)
+            except BaseException,e:
+                pass
                 
             
         # a single validation step    
-        def validation_step(x_batch,y_batch,writer=None):
+        def validation_step(x_batch,y_batch,features_batch,writer=None):
             '''
             a single training step
             '''
             feed_dict = {cnn._input_x:x_batch,
                          cnn._input_y:y_batch,
+                         cnn._features:features_batch,
                          cnn._keep_prob:1.0} # for evaluation
             step,summaries,loss = sess.run([global_step,validation_summary_op
                       ,cnn._loss],feed_dict)
@@ -233,19 +273,21 @@ with tf.Graph().as_default():
         
         # generates batches
         
-        batches = data_helper.batch_iter(list(zip(x_train,y_train)),FLAGS.batch_size,FLAGS.num_epochs)
+        batches = data_helper.batch_iter(list(zip(x_train,y_train,features_train)),FLAGS.batch_size,FLAGS.num_epochs)
         
         #Training Loop
         
         for batch in batches:
-            x_batch,y_batch = zip(*batch)
-            train_step(x_batch,y_batch,writer=train_summary_writer)
+            x_batch,y_batch,features_batch = zip(*batch)
+            train_step(x_batch,y_batch,features_batch,writer=train_summary_writer)
             current_step = tf.train.global_step(sess,global_step)
+            
             if current_step % FLAGS.evaluate_interval == 0:
                 
                 print("##############\nEvaluation:\n")
-                validation_step(x_val,y_val,writer=validation_summary_writer)
+                validation_step(x_val,y_val,features_validation,writer=validation_summary_writer)
                 print("##############")
+                
             if current_step % FLAGS.checkpoint_interval == 0:
                 path = saver.save(sess,checkpoint_prefix,global_step=current_step)
                 print("Saved the model checkpoint to %s " % path)

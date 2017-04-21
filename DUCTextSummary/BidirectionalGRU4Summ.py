@@ -76,7 +76,7 @@ class BidirectionalGRU4Summ(object):
             outputs,_,_ = rnn.static_bidirectional_rnn(gru_fw_cell_sentence,gru_bw_cell_sentence,
                                                        input_to_sentence,dtype=tf.float32)
         
-            outputs = tf.reshape(outputs,[-1,2*sentence_hidden_size])
+            outputs = tf.reshape(outputs,[-1,2*sentence_hidden_size],name="sentence_rep")
         
         with tf.name_scope("document-representation"):
             average_sent_rep = tf.reduce_mean(outputs,axis=0)
@@ -87,18 +87,22 @@ class BidirectionalGRU4Summ(object):
             doc_rep = tf.reshape(doc_rep,[-1,1])
             
         with tf.name_scope("prediction"):
+            # variables
             W_c = tf.get_variable("W_c",[2*sentence_hidden_size,1],dtype=tf.float32)
             W_s = tf.get_variable("W_s",[2*sentence_hidden_size,doc_rep_size],dtype=tf.float32)
             W_r = tf.get_variable("W_r",[2*sentence_hidden_size,2*sentence_hidden_size],dtype=tf.float32)
             b_p = tf.get_variable("b_p",[],dtype=tf.float32)
+            # constants
+            mask = np.array([[1]*i+[0]*(document_len-i) for i in range(document_len)])
+            mask = tf.constant(mask,dtype=tf.float32)
             
             # contents
             contents = tf.matmul(outputs,W_c,name="content")
             # salience             
             salience = tf.matmul(tf.matmul(outputs,W_s),doc_rep,name="salience")
             # redundancy
-            redundancy = tf.reduce_mean(tf.matmul(tf.matmul(outputs,W_r)
-                         ,tf.transpose(outputs,[1,0])),name="redundancy",axis=1)
+            redundancy = tf.reshape(tf.reduce_mean(tf.matmul(tf.matmul(outputs,W_r)
+                         ,tf.transpose(outputs,[1,0])) * mask,axis=1),[-1,1],name="redundancy")
             
             scores = tf.nn.sigmoid(contents + salience - redundancy + b_p,name="scores")
             

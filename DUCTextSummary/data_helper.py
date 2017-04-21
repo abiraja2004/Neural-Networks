@@ -15,6 +15,7 @@ import os
 import csv
 import collections
 import numpy as np
+import feature_helper
 
 corpus_path = "/home/chosenone/download/DUC_COPRUS/duc%s.txt"
 summary_path = "/home/chosenone/download/rouge2.0-0.2/duc%s/reference/"
@@ -34,7 +35,7 @@ def LoadSentencesAndFScores():
     
     for year in ['2001','2002','2004']:
     
-        print("Parse the duc%s data...\n\n" % year)
+        print("Parse the duc%s data..." % year)
         
         cluster_id = 1
         
@@ -60,9 +61,6 @@ def LoadSentencesAndFScores():
                     sentence_index += 1
                     
                     cur_cluster_id = cluster_id - 1 if not another_cluster else cluster_id
-                    with open(system_path % year + "task%d_%s" % (cur_cluster_id,sentence_index),
-                                 "wb") as target:
-                           target.write(sentence)
                     
                     if another_cluster:
                         another_cluster = False
@@ -73,11 +71,9 @@ def LoadSentencesAndFScores():
         
                     reference_num += 1
                     
-                    with open(summary_path % year + ("task%d_reference%d" % (cluster_id,reference_num)),'wb') as target:
-                                target.write(line)
                     another_cluster = True
                     
-        print("Cluster Number: %d,Total sentences:%d "%(cluster_id-1,sentence_index))
+        print("Cluster Number: %d,Total sentences:%d \n\n"%(cluster_id-1,sentence_index))
        
                         
         ALL_SENTENCES[year] = sentences
@@ -87,24 +83,24 @@ def LoadSentencesAndFScores():
     total_scores_train = []
     total_scores_evaluate = []
     
-    for key in ALL_SENTENCES.iterkeys():
+    for key in ['2001','2002','2004']:
         
         rouge1_scores = []
         rouge2_scores = []
         scores = []
-        alpha = 0.5
+        alpha = 0.8
         
         with open(rouge_1_scores_path % key,"rb") as rouge1:
             reader = csv.reader(rouge1)
             for i,row in enumerate(reader):
                 if i > 0:
-                    rouge1_scores.append(row[5])
+                    rouge1_scores.append(row[3])
             
         with open(rouge_2_scores_path % key,"rb") as rouge2:
             reader = csv.reader(rouge2)
             for i,row in enumerate(reader):
                 if i>0:
-                    rouge2_scores.append(row[5])
+                    rouge2_scores.append(row[3])
             
         for i,sentence in enumerate(ALL_SENTENCES[key]):
             scores.append(10 * alpha * float(rouge1_scores[i]) + 10 * (1 - alpha) * float(rouge2_scores[i]))
@@ -116,34 +112,14 @@ def LoadSentencesAndFScores():
             total_sentences_evaluate += ALL_SENTENCES[key]
             total_scores_evaluate += scores
                 
-        
-    print(len(ALL_SENTENCES))
-    
-    print(len(ALL_SENTENCES['2001']))
-    print(len(ALL_SENTENCES['2002']))
-    print(len(ALL_SENTENCES['2004']))
-    
-    print(len(ALL_SENTENCES['2001']) + len(ALL_SENTENCES['2002'])
-           + len(ALL_SENTENCES['2004']))
-    
-    print(len(total_sentences_train),len(total_scores_train))
-    print(len(total_sentences_evaluate),len(total_scores_evaluate))
-    
-    
-#==============================================================================
-#     print((clear_sentence_array(total_sentences_train))[0])
-#     
-#     training_set = np.array(sentence2ids((clear_sentence_array(total_sentences_train))))
-#     
-#     for i in range(10):
-#         print(len(training_set[i]))
-#==============================================================================
-    
-
-    return ((clear_sentence_array(total_sentences_train + total_sentences_evaluate)),
-           total_scores_train + total_scores_evaluate,
+    # Load features
+    features = feature_helper.LoadFeatures()
+    features_train = np.concatenate([features['2001'],features['2002']],axis=0)
+    features_evaluate = features['2004']    
+    return ((clear_sentence_array(total_sentences_train)),
+           total_scores_train,features_train,
            (clear_sentence_array(total_sentences_evaluate)),
-           total_scores_evaluate)                    
+           total_scores_evaluate,features_evaluate)                    
 
 def AggregateDucData(target_path):
     
@@ -160,50 +136,58 @@ def AggregateDucData(target_path):
         
         if exist:
             with open(target_path,"a") as target:
-                    target.writelines(clear_sentence_array(sentences))
+                for sentence in clear_sentence_array(sentences):
+                    target.write(sentence+"\r\n")
 
 def spliteDUC2004DataforEvaluateModel():
     
     for year in ['2004']:
     
-        print("Split the duc%s data...\n\n" % year)
+        print("Parse the duc%s data..." % year)
         
-        with open(corpus_path % year,'rb') as f:
-            content = f.read()
-            clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
-            
-            print("Total clusters : %d\n\n" % len(clusters))
-            
-            total = 0
-            sent_index = 0
-            
-            for i,cluster in enumerate(clusters):
-                print("Geting No.%d Cluster..." % (i+1))
-                
-                document = re.split(r"[\r\n]+(?=0.)",cluster)
-                
-                document = [sent.strip() for sent in document]
-                
-                # get the sentences for every cluster 
-                
-                for index in range(1,len(document)):
-                       
-                       three = re.split(r"\s",document[index])
-                       
-                       sent_index += 1
-                       
-                       with open(evaluate_data_path + ("cluster%d" % i),'a') as target:
-                           target.write(" ".join(three[2:]) + "\r\n")
-                               
-                       
-                       if index == len(document) - 1:
-                           total += (int(three[1]) + 1)
+        clusters = []
+        cluster_id = 1
+        another_cluster = False
+        FirstIn = True
+        sentence_index = 0
+        
+        sentences = []
+        
+        # Load sentences
+        
+        for line in open(corpus_path % year,"rb"):
+            if  line.strip():
+                if re.match(r"^[01](\.[0-9]+)?\s+[0-9]+\s+.",line):
+                    three = line.split()
+                    what_the_fuck = three[0]
+                    document_id = int(three[1])
+                    sentence = " ".join(three[2:])
+                    
+                    sentences.append(sentence)
+                    sentence_index += 1
+                    
+                    if another_cluster:
+                        another_cluster = False
+                        cluster_id += 1
+                    if not FirstIn:
+                        FirstIn = True
+                    
+                else:
+        
+                    if not cluster_id == 1 and FirstIn:
+                        with open(evaluate_data_path + "cluster%d" % (cluster_id - 1),"wb") as target:
+                             for sentence in sentences:
+                                 target.write(sentence+"\r\n")
+                        sentences = []
+                        FirstIn = False
                         
-                print("No.%d Cluster finished\n" % i)
-            
-            print("Total document: %d ,Total sentence: %d ..." % (total,sent_index))
-
-
+                    another_cluster = True
+                    
+        with open(evaluate_data_path + "cluster%d" % (cluster_id - 1),"wb") as target:
+            for sentence in sentences:
+                target.write(sentence+"\r\n\r\n")
+        print("Cluster Number: %d,Total sentences:%d "%(cluster_id-1,sentence_index))
+        
 def _clear_str(string):
     
     '''
@@ -309,9 +293,10 @@ def TestReForDUC():
     print(max_len,i,max_reference_num)            
 # build vocabulary first                 
 #==============================================================================
-# word_to_id = build_vocab(vocabulary_path)        
+# word_to_id = build_vocab(vocabulary_path) 
+# print(len(word_to_id))       
+# 
 #==============================================================================
-
 #==============================================================================
 # LoadSentencesAndFScores()
 #==============================================================================
@@ -328,60 +313,3 @@ def TestReForDUC():
 # spliteDUC2004DataforEvaluateModel()
 #==============================================================================
 
-
-
-# for the purpose in the future
-
-#==============================================================================
-#         with open(corpus_path % year,'rb') as f:
-#             
-#             content = f.read()
-#             clusters = re.split(r"\r\n\r\n(?=[A-Za-z]+)",content)
-#             
-#             print("Total clusters : %d\n\n" % len(clusters))
-#             
-#             total = 0
-#             sentences = []
-#             sent_index = 0
-#             
-#             for i,cluster in enumerate(clusters):
-#                 
-#                 print("No.%d ..." % (i+1))
-#                 
-#                 document = re.split(r"\.?[\r\n]+(?=[0-9])",cluster)
-#                 
-#                 document = [sent.strip() for sent in document]
-#                 
-#                 refrence_summary = document[0]
-#                 
-#                 refrence_summarys = re.split(r"\r\n",refrence_summary.strip())
-# 
-#                 
-#                 for refre in range(len(refrence_summarys)):
-#                     # write the gold standard summary into the reference dir of ROUGE
-#                     if not os.path.exists(summary_path % year + ("task%d_reference%d" % (i+1,refre))):
-#                         with open(summary_path % year + ("task%d_reference%d" % (i+1,refre)),'wb') as target:
-#                                 target.write(refrence_summarys[refre].strip()+"\r\n")
-#                     
-#                 
-#                 # get the sentences for every document 
-#                 
-#                 for index in range(1,len(document)):
-#                        
-#                        three = re.split(r"\s",document[index])
-#                        
-#                        sent_index += 1
-#                        
-#                        with open(system_path % year + "task%d_%s" % (i+1,sent_index),
-#                                  "wb") as target:
-#                            target.write(" ".join(three[2:])+"\r\n")
-#                                
-#                        sentences.append(" ".join(three[2:]))
-#                        
-#                        if index == len(document) - 1:
-#                            total += (int(three[1]) + 1)
-#                         
-#                 print("\n")
-#             
-#             print("Total document: %d ,Total sentence: %d ..." % (total,sent_index))
-#==============================================================================
